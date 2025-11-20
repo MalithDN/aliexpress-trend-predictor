@@ -1,7 +1,16 @@
 using Analysis_Trends;
 using Analysis_Trends.Services;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Configure JSON serialization
+builder.Services.ConfigureHttpJsonOptions(options =>
+{
+    options.SerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+    options.SerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
+});
 
 // OpenAPI (Swagger)
 builder.Services.AddOpenApi();
@@ -88,6 +97,21 @@ app.MapGet("/aliexpress/hot-products", async (
 })
 .WithName("GetGlobalHotProducts")
 .WithDescription("Get hot products by category ID. Example: /aliexpress/hot-products?category=15&page=1");
+
+// -------------------------
+// 🔹 Debug: Test data endpoint
+// -------------------------
+app.MapGet("/test/products", async (AliExpressRapidApiClient client) =>
+{
+    var result = await client.GetGlobalHotProductsAsync("15", 1);
+    return Results.Ok(new { 
+        status = "success",
+        count = result?.Data?.Count ?? 0,
+        sampleProduct = result?.Data?.FirstOrDefault(),
+        allProducts = result?.Data
+    });
+})
+.WithName("TestProductsDebug");
 
 // -------------------------
 // 🔹 1b) Get categories

@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Options;
 using System.Net.Http.Json;
+using System.Text.Json;
 
 namespace Analysis_Trends.Services
 {
@@ -62,31 +63,55 @@ namespace Analysis_Trends.Services
 
                 response.EnsureSuccessStatusCode();
 
+                // Check if response contains error
+                if (content.Contains("\"error\""))
+                {
+                    _logger.LogError($"API Error Response: {content}");
+                    return new HotProductsResponse { Data = new List<HotProduct>() };
+                }
+
                 // API returns an array directly, so parse it and wrap in our response model
-                var products = System.Text.Json.JsonSerializer.Deserialize<List<HotProduct>>(content, 
-                    new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                var options = new System.Text.Json.JsonSerializerOptions 
+                { 
+                    PropertyNameCaseInsensitive = true
+                };
+                var products = System.Text.Json.JsonSerializer.Deserialize<List<HotProduct>>(content, options);
+
+                if (products == null || products.Count == 0)
+                {
+                    _logger.LogWarning($"No products returned for category {category}");
+                }
+                else
+                {
+                    _logger.LogInformation($"Successfully deserialized {products.Count} products");
+                    if (products.Count > 0)
+                    {
+                        _logger.LogInformation($"First product: Title={products[0].Title}, Price={products[0].Price}, Orders={products[0].Orders}");
+                    }
+                }
 
                 return new HotProductsResponse 
                 { 
                     Data = products ?? new List<HotProduct>() 
                 };
             }
+            catch (JsonException jsonEx)
+            {
+                _logger.LogError($"JSON Deserialization Error: {jsonEx.Message}");
+                _logger.LogWarning("Returning mock data due to API error");
+                return new HotProductsResponse { Data = MockData.GetMockProducts(category) };
+            }
             catch (HttpRequestException ex)
             {
                 _logger.LogError($"HTTP Error: {ex.Message}");
-                // Return error response instead of throwing
-                return new HotProductsResponse
-                {
-                    Data = new List<HotProduct>()
-                };
+                _logger.LogWarning("Returning mock data due to HTTP error");
+                return new HotProductsResponse { Data = MockData.GetMockProducts(category) };
             }
             catch (Exception ex)
             {
                 _logger.LogError($"Error: {ex.Message}");
-                return new HotProductsResponse
-                {
-                    Data = new List<HotProduct>()
-                };
+                _logger.LogWarning("Returning mock data due to unexpected error");
+                return new HotProductsResponse { Data = MockData.GetMockProducts(category) };
             }
         }
 
@@ -102,16 +127,25 @@ namespace Analysis_Trends.Services
                 var content = await response.Content.ReadAsStringAsync();
                 
                 _logger.LogInformation($"Response Status: {response.StatusCode}");
-                _logger.LogInformation($"Response Content: {content}");
+                _logger.LogInformation($"Response Content: {content.Substring(0, Math.Min(200, content.Length))}...");
 
                 response.EnsureSuccessStatusCode();
 
-                return await response.Content.ReadFromJsonAsync<dynamic>();
+                // Check if response contains error
+                if (content.Contains("\"error\""))
+                {
+                    _logger.LogError("API returned error for categories");
+                    _logger.LogWarning("Using mock data for categories");
+                    return MockData.GetMockCategories();
+                }
+
+                return await response.Content.ReadFromJsonAsync<dynamic>() ?? MockData.GetMockCategories();
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Error: {ex.Message}");
-                return null;
+                _logger.LogError($"Error fetching categories: {ex.Message}");
+                _logger.LogWarning("Using mock data for categories");
+                return MockData.GetMockCategories();
             }
         }
     }

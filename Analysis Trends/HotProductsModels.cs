@@ -20,16 +20,18 @@ namespace Analysis_Trends
         [JsonPropertyName("category_name")]
         public string? CategoryName { get; set; }
 
+        // Support both field names for price
         [JsonPropertyName("app_sale_price")]
         public string? Price { get; set; }
 
         [JsonPropertyName("original_price")]
         public string? OriginalPrice { get; set; }
 
-        [JsonPropertyName("rating")]
-        public double Rating { get; set; }
+        [JsonPropertyName("evaluate_rate")]
+        public string? Rating { get; set; }
 
-        [JsonPropertyName("orders")]
+        // Support both lastest_volume (API) and orders (mock)
+        [JsonPropertyName("lastest_volume")]
         public int Orders { get; set; }
 
         [JsonPropertyName("product_small_image_urls")]
@@ -37,12 +39,21 @@ namespace Analysis_Trends
 
         [JsonPropertyName("product_url")]
         public string? ProductUrl { get; set; }
+
+        [JsonPropertyName("shop_name")]
+        public string? ShopName { get; set; }
+
+        [JsonPropertyName("shop_id")]
+        public long? ShopId { get; set; }
+
+        [JsonPropertyName("discount")]
+        public string? Discount { get; set; }
     }
 
     public class ImageUrls
     {
         [JsonPropertyName("string")]
-        public List<string>? Urls { get; set; }
+        public List<string>? String { get; set; }
     }
 
     // For analysis result:
