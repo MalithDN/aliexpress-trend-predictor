@@ -6,6 +6,17 @@ var builder = WebApplication.CreateBuilder(args);
 // OpenAPI (Swagger)
 builder.Services.AddOpenApi();
 
+// Add CORS
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll", policy =>
+    {
+        policy.AllowAnyOrigin()
+              .AllowAnyMethod()
+              .AllowAnyHeader();
+    });
+});
+
 // ✅ Bind RapidApi section
 builder.Services.Configure<RapidApiOptions>(
     builder.Configuration.GetSection("RapidApi"));
@@ -20,6 +31,19 @@ if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
 }
+
+// Enable static files (for index.html)
+app.UseStaticFiles();
+
+// Use CORS
+app.UseCors("AllowAll");
+
+// Default route to index.html
+app.MapFallback("/{**path}", async context =>
+{
+    context.Response.ContentType = "text/html; charset=utf-8";
+    await context.Response.SendFileAsync(Path.Combine(app.Environment.WebRootPath, "index.html"));
+});
 
 //app.UseHttpsRedirection();
 
