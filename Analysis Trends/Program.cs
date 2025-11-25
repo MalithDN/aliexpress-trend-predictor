@@ -27,14 +27,14 @@ builder.Services.AddCors(options =>
     });
 });
 
-// ✅ Bind RapidApi section
+// Bind RapidApi section
 builder.Services.Configure<RapidApiOptions>(
     builder.Configuration.GetSection("RapidApi"));
 
-// ✅ Register HttpClient-based AliExpress client
+// Register HttpClient-based AliExpress client
 builder.Services.AddHttpClient<AliExpressRapidApiClient>();
 
-// ✅ MongoDB configuration and services
+// MongoDB configuration and services
 builder.Services.Configure<Analysis_Trends.Models.MongoDbOptions>(
     builder.Configuration.GetSection("MongoDb"));
 builder.Services.AddSingleton<Analysis_Trends.Services.MongoDbService>();

@@ -67,8 +67,7 @@ namespace Analysis_Trends.Services
                 if (content.Contains("\"error\""))
                 {
                     _logger.LogError($"API Error Response: {content}");
-                    _logger.LogWarning($"API returned error for category {category}, using mock data");
-                    return new HotProductsResponse { Data = MockData.GetMockProducts(category) };
+                    throw new InvalidOperationException($"API returned error for category {category}: {content}");
                 }
 
                 // API returns an array directly, so parse it and wrap in our response model
@@ -89,7 +88,7 @@ namespace Analysis_Trends.Services
                     {
                         _logger.LogInformation($"First product: Title={products[0].Title}, Price={products[0].Price}, Orders={products[0].Orders}");
                         _logger.LogInformation($"First product ImageUrls: {(products[0].ImageUrls != null ? "Present" : "NULL")}");
-                        if (products[0].ImageUrls?.String != null)
+                        if (products[0].ImageUrls?.String?.Count > 0)
                         {
                             _logger.LogInformation($"First product Images count: {products[0].ImageUrls.String.Count}");
                         }
@@ -104,20 +103,17 @@ namespace Analysis_Trends.Services
             catch (JsonException jsonEx)
             {
                 _logger.LogError($"JSON Deserialization Error: {jsonEx.Message}");
-                _logger.LogWarning("Returning mock data due to API error");
-                return new HotProductsResponse { Data = MockData.GetMockProducts(category) };
+                throw;
             }
             catch (HttpRequestException ex)
             {
                 _logger.LogError($"HTTP Error: {ex.Message}");
-                _logger.LogWarning("Returning mock data due to HTTP error");
-                return new HotProductsResponse { Data = MockData.GetMockProducts(category) };
+                throw;
             }
             catch (Exception ex)
             {
                 _logger.LogError($"Error: {ex.Message}");
-                _logger.LogWarning("Returning mock data due to unexpected error");
-                return new HotProductsResponse { Data = MockData.GetMockProducts(category) };
+                throw;
             }
         }
 
@@ -141,17 +137,15 @@ namespace Analysis_Trends.Services
                 if (content.Contains("\"error\""))
                 {
                     _logger.LogError("API returned error for categories");
-                    _logger.LogWarning("Using mock data for categories");
-                    return MockData.GetMockCategories();
+                    throw new InvalidOperationException($"API returned error for categories: {content}");
                 }
 
-                return await response.Content.ReadFromJsonAsync<dynamic>() ?? MockData.GetMockCategories();
+                return await response.Content.ReadFromJsonAsync<dynamic>() ?? new List<object>();
             }
             catch (Exception ex)
             {
                 _logger.LogError($"Error fetching categories: {ex.Message}");
-                _logger.LogWarning("Using mock data for categories");
-                return MockData.GetMockCategories();
+                throw;
             }
         }
     }
