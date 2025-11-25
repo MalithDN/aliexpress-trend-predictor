@@ -34,6 +34,8 @@ namespace Analysis_Trends
         [JsonPropertyName("lastest_volume")]
         public int Orders { get; set; }
 
+        // Skip image URLs to avoid API errors - will show placeholder instead
+        [JsonIgnore]
         [JsonPropertyName("product_small_image_urls")]
         public ImageUrls? ImageUrls { get; set; }
 

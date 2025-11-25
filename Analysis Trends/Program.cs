@@ -2,6 +2,7 @@ using Analysis_Trends;
 using Analysis_Trends.Services;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using MongoDB.Driver;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -32,6 +33,12 @@ builder.Services.Configure<RapidApiOptions>(
 
 // ✅ Register HttpClient-based AliExpress client
 builder.Services.AddHttpClient<AliExpressRapidApiClient>();
+
+// ✅ MongoDB configuration and services
+builder.Services.Configure<Analysis_Trends.Models.MongoDbOptions>(
+    builder.Configuration.GetSection("MongoDb"));
+builder.Services.AddSingleton<Analysis_Trends.Services.MongoDbService>();
+builder.Services.AddSingleton<Analysis_Trends.Services.ProductRepository>();
 
 var app = builder.Build();
 
@@ -86,13 +93,29 @@ app.MapGet("/weatherforecast", () =>
 app.MapGet("/aliexpress/hot-products", async (
     string category,
     int page,
-    AliExpressRapidApiClient client) =>
+    AliExpressRapidApiClient client,
+    Analysis_Trends.Services.ProductRepository repo) =>
 {
     if (page <= 0) page = 1;
     if (string.IsNullOrWhiteSpace(category))
         return Results.BadRequest("category parameter is required");
 
     var result = await client.GetGlobalHotProductsAsync(category, page);
+
+    // Persist products to MongoDB (best-effort)
+    try
+    {
+        if (result?.Data != null && result.Data.Count > 0)
+        {
+            // fire-and-forget persistence, don't block API response
+            _ = Task.Run(async () =>
+            {
+                try { await repo.InsertManyAsync(result.Data); } catch { /* swallow */ }
+            });
+        }
+    }
+    catch { /* swallow */ }
+
     return Results.Ok(result);
 })
 .WithName("GetGlobalHotProducts")
@@ -172,6 +195,36 @@ app.MapGet("/analysis/global-trend", async (
     return Results.Ok(summary);
 })
 .WithName("GetGlobalTrendSummary");
+
+// -------------------------
+// 🔹 Query MongoDB data endpoint
+// -------------------------
+app.MapGet("/database/products", async (Analysis_Trends.Services.MongoDbService mongoDbService) =>
+{
+    try
+    {
+        var collection = mongoDbService.GetCollection<MongoDB.Bson.BsonDocument>("hot_products");
+        var products = await collection.Find(new MongoDB.Bson.BsonDocument()).ToListAsync();
+        
+        return Results.Ok(new 
+        { 
+            status = "success",
+            count = products.Count,
+            data = products
+        });
+    }
+    catch (Exception ex)
+    {
+        return Results.Ok(new 
+        { 
+            status = "error",
+            message = ex.Message,
+            data = new object[0]
+        });
+    }
+})
+.WithName("GetDatabaseProducts")
+.WithDescription("Query all products stored in MongoDB");
 
 app.Run();
 

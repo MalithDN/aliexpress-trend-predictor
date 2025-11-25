@@ -67,7 +67,8 @@ namespace Analysis_Trends.Services
                 if (content.Contains("\"error\""))
                 {
                     _logger.LogError($"API Error Response: {content}");
-                    return new HotProductsResponse { Data = new List<HotProduct>() };
+                    _logger.LogWarning($"API returned error for category {category}, using mock data");
+                    return new HotProductsResponse { Data = MockData.GetMockProducts(category) };
                 }
 
                 // API returns an array directly, so parse it and wrap in our response model
@@ -87,6 +88,11 @@ namespace Analysis_Trends.Services
                     if (products.Count > 0)
                     {
                         _logger.LogInformation($"First product: Title={products[0].Title}, Price={products[0].Price}, Orders={products[0].Orders}");
+                        _logger.LogInformation($"First product ImageUrls: {(products[0].ImageUrls != null ? "Present" : "NULL")}");
+                        if (products[0].ImageUrls?.String != null)
+                        {
+                            _logger.LogInformation($"First product Images count: {products[0].ImageUrls.String.Count}");
+                        }
                     }
                 }
 
