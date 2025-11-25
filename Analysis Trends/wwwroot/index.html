@@ -415,6 +415,7 @@
                 </select>
                 <input type="number" id="pageInput" min="1" value="1" placeholder="Page" style="width: 80px;">
                 <button onclick="loadData()">Search Trends</button>
+                <button onclick="stopAutoRefresh()" style="background: #e74c3c;">Stop Refresh</button>
             </div>
         </header>
 
@@ -475,6 +476,8 @@
         let allProducts = [];
         let topProducts = [];
         let categories = {};
+        let autoRefreshInterval = null;
+        const REFRESH_INTERVAL = 40000; // 40 seconds
 
         // Load categories on page load
         window.addEventListener('load', () => {
@@ -555,12 +558,55 @@
                 document.getElementById('content').style.display = 'grid';
                 document.getElementById('productsSection').style.display = 'block';
 
+                // Start auto-refresh (stop any existing interval first)
+                stopAutoRefresh();
+                startAutoRefresh(categoryId, page);
+
             } catch (error) {
                 console.error('Error loading data:', error);
                 showError('Failed to load data. Check that the API is running and the category is valid.');
             } finally {
                 showLoading(false);
             }
+        }
+
+        function startAutoRefresh(categoryId, page) {
+            let countdownSeconds = REFRESH_INTERVAL / 1000;
+            const refreshIndicator = document.createElement('div');
+            refreshIndicator.id = 'refreshIndicator';
+            refreshIndicator.style.cssText = `
+                position: fixed;
+                bottom: 20px;
+                right: 20px;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 15px 20px;
+                border-radius: 8px;
+                font-weight: 600;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+                z-index: 1000;
+            `;
+            refreshIndicator.textContent = `🔄 Refreshing in ${countdownSeconds}s`;
+            document.body.appendChild(refreshIndicator);
+
+            const countdownInterval = setInterval(() => {
+                countdownSeconds--;
+                refreshIndicator.textContent = `🔄 Refreshing in ${countdownSeconds}s`;
+                if (countdownSeconds <= 0) clearInterval(countdownInterval);
+            }, 1000);
+
+            autoRefreshInterval = setInterval(() => {
+                loadData();
+            }, REFRESH_INTERVAL);
+        }
+
+        function stopAutoRefresh() {
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+                autoRefreshInterval = null;
+            }
+            const indicator = document.getElementById('refreshIndicator');
+            if (indicator) indicator.remove();
         }
 
         function displayStats(trendsData) {
